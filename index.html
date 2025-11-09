@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알티노 라이트 디스플레이</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 폰트 적용 (Inter) */
+        body {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent; /* 모바일 클릭 시 파란색 하이라이트 제거 */
+        }
+        /* 그리드 셀의 크기를 뷰포트에 따라 조절하고 정사각형 비율 유지 (수정됨) */
+        .grid-cell {
+            width: 10vw; /* 뷰포트 너비의 10% */
+            max-width: 40px; /* 최대 크기 제한 */
+            aspect-ratio: 1 / 1; /* 정사각형 비율 강제 */
+            user-select: none; /* 텍스트 선택 방지 */
+            /* height와 max-height는 aspect-ratio가 처리하도록 제거 */
+        }
+        /* 라벨 스타일 */
+        .axis-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem; /* 12px */
+            color: #4B5563; /* gray-600 */
+            font-weight: 500;
+        }
+        /* 합계 박스 스타일 */
+        .hex-sum-box {
+            font-family: 'Courier New', Courier, monospace; /* 복사 문자열과 동일한 폰트 */
+            font-weight: 600;
+            font-size: 0.875rem; /* 14px */
+            padding: 0.25rem;
+            background-color: #F3F4F6; /* gray-100 */
+            border: 1px solid #D1D5DB; /* gray-300 */
+            border-radius: 0.375rem; /* 6px */
+            text-align: center;
+            height: 40px; /* 고정 높이 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1D4ED8; /* 파란 계열 (Tailwind blue-700) */
+        }
+        /* 16진수 합계 위의 열 라벨 */
+        .col-sum-label {
+            font-size: 0.75rem; /* 12px */
+            color: #4B5563; /* gray-600 */
+            font-weight: 500;
+            text-align: center;
+            margin-bottom: 0.25rem; /* 4px */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen p-4">
+
+    <!-- 메인 컨테이너 -->
+    <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-xl w-full max-w-md mx-auto">
+        
+        <!-- 제목 (그라데이션 적용) -->
+        <h1 class="text-2xl sm:text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-blue-600 mb-2">
+            알티노 라이트 디스플레이
+        </h1>
+
+        <!-- 그리드 및 라벨 컨테이너 (수정됨) -->
+        <div class="mt-6">
+            <!-- ID를 부여하여 JS가 제어하도록 변경 -->
+            <div id="main-grid" class="grid grid-cols-9 gap-1 items-center">
+                <!-- JavaScript로 Y축 라벨, 8x8 그리드, X축 라벨이 동적 생성됩니다. -->
+                <!-- (기존 X축 라벨 HTML은 JS로 이동) -->
+            </div>
+        </div>
+
+        <!-- 16진수 합계 디스플레이 -->
+        <div class="mt-6">
+            <div id="hex-sum-container" class="grid grid-cols-8 gap-1">
+                <!-- JavaScript로 동적 생성됨 -->
+            </div>
+        </div>
+
+        <!-- 16진수 값 문자열 및 복사 버튼 -->
+        <div class="mt-4 p-3 bg-gray-100 rounded-lg flex items-center justify-between space-x-2">
+            <code id="display-line-string" class="text-sm text-gray-700 whitespace-nowrap overflow-x-auto overflow-y-hidden pb-1" style="font-family: 'Courier New', Courier, monospace;">
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            </code>
+            <button id="copy-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-1.5 px-3 rounded-md text-xs transition-colors duration-200 flex-shrink-0">
+                복사
+            </button>
+        </div>
+
+
+        <!-- AI 이미지 생성 (키워드 입력 + 버튼) -->
+        <div class="mt-8 flex items-center space-x-2">
+            <input type="text" id="keyword-input" placeholder="키워드 입력 (예: heart)" class="flex-1 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <button id="ai-image-button" class="bg-teal-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50">
+                ✨ AI 생성
+            </button>
+        </div>
+
+        <!-- AI 상태 메시지 -->
+        <div id="ai-status-message" class="text-center text-sm text-gray-600 mt-2 h-5"></div>
+
+        <!-- 리셋 버튼 (제일 하단으로 이동 및 상단 마진 추가) -->
+        <button id="reset-button" class="mt-4 w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200">
+            🔄 처음부터 다시하기
+        </button>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // const gridContainer = document.querySelector('.grid.grid-cols-9'); // (기존)
+            const gridContainer = document.getElementById('main-grid'); // (수정) ID로 선택
+            const hexSumContainer = document.getElementById('hex-sum-container');
+            const resetButton = document.getElementById('reset-button');
+            const displayLineString = document.getElementById('display-line-string');
+            const copyButton = document.getElementById('copy-button');
+
+            // AI 생성 관련 UI 요소
+            const aiImageButton = document.getElementById('ai-image-button');
+            const keywordInput = document.getElementById('keyword-input');
+            const aiStatusMessage = document.getElementById('ai-status-message');
+            
+            // Y축 라벨 (행) - 상단(0x80)부터 하단(0x01) 순서로 변경
+            const yLabels = ['0x80', '0x40', '0x20', '0x10', '0x08', '0x04', '0x02', '0x01'];
+            // X축 라벨 (열)
+            const xLabels = ['1', '2', '3', '4', '5', '6', '7', '8'];
+
+            // --- 1. 8x8 그리드 및 라벨 UI 생성 (수정됨) ---
+
+            // 1-1. Y축 라벨 (행) 및 8x8 그리드 셀 생성
+            yLabels.forEach(rowLabel => {
+                // Y축 라벨 (행)
+                const yLabelDiv = document.createElement('div');
+                yLabelDiv.className = 'axis-label';
+                yLabelDiv.textContent = rowLabel;
+                gridContainer.appendChild(yLabelDiv);
+
+                // 8개의 그리드 셀
+                xLabels.forEach(colLabel => {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell bg-gray-200 rounded-md cursor-pointer transition-colors duration-150';
+                    cell.dataset.row = rowLabel; // 행 값 (예: 0x80)
+                    cell.dataset.col = colLabel; // 열 값 (예: 1)
+                    gridContainer.appendChild(cell);
+                });
+            });
+
+            // 1-1-B. X축 라벨 (열)을 하단에 생성 (새로 추가)
+            // (0,0) 빈 코너
+            gridContainer.appendChild(document.createElement('div'));
+
+            // 8개의 X축 라벨
+            xLabels.forEach(colLabel => {
+                const xLabelDiv = document.createElement('div');
+                xLabelDiv.className = 'axis-label pt-2'; // 상단 패딩(pt-2) 추가
+                xLabelDiv.textContent = colLabel;
+                gridContainer.appendChild(xLabelDiv);
+            });
+
+
+            // 1-2. 16진수 합계 디스플레이 생성
+            xLabels.forEach(colLabel => {
+                const colWrapper = document.createElement('div');
+                
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'col-sum-label';
+                labelDiv.textContent = `${colLabel}열`; // "n열" 형식
+                colWrapper.appendChild(labelDiv);
+
+                const sumBox = document.createElement('div');
+                sumBox.className = 'hex-sum-box';
+                sumBox.id = `hex-sum-${colLabel}`; // ID 부여 (예: hex-sum-1)
+                sumBox.textContent = '0x00';
+                colWrapper.appendChild(sumBox);
+
+                hexSumContainer.appendChild(colWrapper);
+            });
+
+            // --- 2. 핵심 로직 함수 ---
+
+            /**
+             * 각 열의 16진수 합계를 계산하고 UI를 업데이트하는 함수
+             */
+            function updateHexSums() {
+                const columnSums = {}; // 예: { '1': 0, '2': 0, ... }
+                xLabels.forEach(col => columnSums[col] = 0);
+
+                // 모든 활성화된(빨간색) 셀 찾기
+                const activeCells = document.querySelectorAll('.grid-cell.bg-red-500');
+
+                activeCells.forEach(cell => {
+                    const col = cell.dataset.col; // '1', '2', ...
+                    const rowHexValue = parseInt(cell.dataset.row); // '0x80' -> 128
+                    
+                    if (columnSums[col] !== undefined) {
+                        columnSums[col] |= rowHexValue; // 비트 OR 연산으로 합산
+                    }
+                });
+
+                // UI 업데이트
+                const hexValues = []; // DisplayLine용 배열
+                xLabels.forEach(col => {
+                    const sum = columnSums[col];
+                    const hexString = '0x' + sum.toString(16).toUpperCase().padStart(2, '0');
+                    document.getElementById(`hex-sum-${col}`).textContent = hexString;
+                    hexValues.push(hexString);
+                });
+
+                // 16진수 값 문자열 업데이트 (DisplayLine() 제거)
+                displayLineString.textContent = hexValues.join(', ');
+            }
+
+            // --- 3. 이벤트 리스너 추가 ---
+
+            // 3-1. 셀 클릭 이벤트 (이벤트 위임 사용)
+            gridContainer.addEventListener('click', (event) => {
+                // 클릭된 요소가 .grid-cell인지 확인
+                if (event.target.classList.contains('grid-cell')) {
+                    const cell = event.target;
+                    // 클래스를 토글 (빨간색 <-> 회색)
+                    cell.classList.toggle('bg-red-500');
+                    cell.classList.toggle('bg-gray-200');
+                    
+                    // 16진수 합계 다시 계산
+                    updateHexSums();
+                }
+            });
+
+            // 3-2. 리셋 버튼 클릭 이벤트
+            resetButton.addEventListener('click', () => {
+                const allCells = document.querySelectorAll('.grid-cell');
+                allCells.forEach(cell => {
+                    cell.classList.remove('bg-red-500');
+                    cell.classList.add('bg-gray-200');
+                });
+                
+                // 16진수 합계 업데이트 (0으로 리셋)
+                updateHexSums();
+                
+                // AI 입력 및 상태 초기화
+                keywordInput.value = '';
+                aiStatusMessage.textContent = '';
+                aiStatusMessage.classList.remove('text-red-600', 'text-blue-600');
+            });
+
+            // 3-3. 복사 버튼 클릭 이벤트
+            copyButton.addEventListener('click', () => {
+                // 이제 displayLineString.textContent는 "0x00, 0x00, ..." 형식임
+                const textToCopy = displayLineString.textContent;
+
+                // document.execCommand를 사용한 클립보드 복사 (iFrame 호환성)
+                try {
+                    const tempTextArea = document.createElement('textarea');
+                    tempTextArea.value = textToCopy;
+                    tempTextArea.style.position = 'absolute';
+                    tempTextArea.style.left = '-9999px'; // 화면 밖으로
+                    document.body.appendChild(tempTextArea);
+                    
+                    tempTextArea.select();
+                    tempTextArea.setSelectionRange(0, 99999); // 모바일 기기 호환성
+
+                    document.execCommand('copy');
+                    
+                    document.body.removeChild(tempTextArea);
+
+                    // 사용자 피드백
+                    copyButton.textContent = '복사 완료!';
+                    copyButton.classList.add('bg-green-500', 'text-white');
+                    copyButton.classList.remove('bg-gray-300', 'hover:bg-gray-400', 'text-gray-800');
+                    
+                    setTimeout(() => {
+                        copyButton.textContent = '복사';
+                        copyButton.classList.remove('bg-green-500', 'text-white');
+                        copyButton.classList.add('bg-gray-300', 'hover:bg-gray-400', 'text-gray-800');
+                    }, 2000);
+
+                } catch (err) {
+                    console.error('클립보드 복사 실패:', err);
+                    // 실패 시 사용자 피드백 (예: alert 대신)
+                    copyButton.textContent = '복사 실패';
+                    copyButton.classList.add('bg-red-500', 'text-white');
+                    setTimeout(() => {
+                        copyButton.textContent = '복사';
+                        copyButton.classList.remove('bg-red-500', 'text-white');
+                    }, 2000);
+                }
+            });
+
+
+            // --- Helper: API Exponential Backoff ---
+            // API 호출 시 재시도를 위한 헬퍼 함수
+            async function fetchWithBackoff(apiUrl, payload, maxRetries = 5) {
+                let delay = 1000; // 1초
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.ok) {
+                            return await response.json();
+                        } else if (response.status === 429 || response.status >= 500) {
+                            // API 과부하 또는 서버 오류 시 잠시 대기 후 재시도
+                            // (콘솔 로그 없음)
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2;
+                        } else {
+                            // 클라이언트 측 오류 (재시도 불필요)
+                            throw new Error(`API Error: ${response.statusText}`);
+                        }
+                    } catch (error) {
+                        // 네트워크 오류 시 재시도
+                        if (i < maxRetries - 1) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2;
+                        } else {
+                            // 최대 재시도 횟수 도달
+                            throw error;
+                        }
+                    }
+                }
+                throw new Error('API request failed after maximum retries.');
+            }
+
+            // --- 4. AI 패턴 생성 함수 ---
+            async function generateAIPattern(keyword) {
+                
+                // ===================================================================
+                // !! 중요 !!
+                // 1단계에서 발급받은 본인의 API 키를 이곳에 붙여넣으세요.
+                // mayo : AI Studio API
+                // 키 조심
+                // ===================================================================
+                const apiKey = "AIzaSyAaBAyxJJGaEK9uejJ2Ul341ZuT65Dkurs"; 
+                
+                // API 키가 비어있는지 확인
+                if (!apiKey || apiKey.trim() === "" || apiKey.includes("AIzaSyAaBAyxJJGaEK9uejJ2Ul341ZuT65Dkurs")) {
+                    console.error("API 키가 설정되지 않았습니다.");
+                    aiStatusMessage.textContent = 'API 키가 필요합니다. 코드를 수정해주세요.';
+                    aiStatusMessage.classList.add('text-red-600');
+                    throw new Error("API Key is not set.");
+                }
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+                const systemPrompt = "You are an AI assistant for an 8x8 LED matrix display. Your task is to generate a simple, recognizable 8x8 bitmap pattern that represents a given keyword. You must respond *only* with a JSON object containing a single key 'pattern', which is an array of 8 integers. Each integer represents a row (from top to bottom), and its 8-bit binary representation defines which LEDs are on (1) or off (0). For example, the number 60 (binary 00111100) means the middle four LEDs are on. The array must have exactly 8 numbers, one for each row.";
+                
+                const userQuery = `Generate a pattern for the keyword: "${keyword}"`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: userQuery }] }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "pattern": {
+                                    type: "ARRAY",
+                                    items: { type: "NUMBER" },
+                                    minItems: 8, // 8x8 그리드
+                                    maxItems: 8  // 8x8 그리드
+                                }
+                            },
+                            required: ["pattern"]
+                        }
+                    }
+                };
+
+                try {
+                    const result = await fetchWithBackoff(apiUrl, payload);
+                    const candidate = result.candidates?.[0];
+                    
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        const jsonText = candidate.content.parts[0].text;
+                        const parsedJson = JSON.parse(jsonText);
+                        
+                        if (parsedJson.pattern && Array.isArray(parsedJson.pattern) && parsedJson.pattern.length === 8) {
+                            // 8개의 숫자로 이루어진 배열인지 확인
+                            return parsedJson.pattern.map(num => Number(num) || 0); // 숫자로 변환
+                        }
+                    }
+                    // 스키마와 다르거나 유효하지 않은 응답
+                    throw new Error('Invalid pattern data received from AI.');
+
+                } catch (error) {
+                    console.error('Error generating AI pattern:', error);
+                    throw error; // 에러를 상위로 전파
+                }
+            }
+
+            // --- 5. UI 업데이트 함수 ---
+            function applyPatternToGrid(pattern) {
+                for (let rowIdx = 0; rowIdx < yLabels.length; rowIdx++) {
+                    const rowLabel = yLabels[rowIdx]; // '0x80', '0x40', ...
+                    const rowValue = pattern[rowIdx]; // AI가 생성한 숫자 (예: 60)
+
+                    for (let colIdx = 0; colIdx < xLabels.length; colIdx++) {
+                        const colLabel = xLabels[colIdx]; // '1', '2', ...
+                        
+                        // 비트 연산:
+                        // colIdx 0 (1열) -> 7번째 비트 (1 << 7)
+                        // colIdx 7 (8열) -> 0번째 비트 (1 << 0)
+                        const bitMask = 1 << (7 - colIdx);
+                        const isBitSet = (rowValue & bitMask) !== 0;
+
+                        const cell = document.querySelector(`.grid-cell[data-col="${colLabel}"][data-row="${rowLabel}"]`);
+
+                        if (cell) {
+                            if (isBitSet) {
+                                cell.classList.add('bg-red-500');
+                                cell.classList.remove('bg-gray-200');
+                            } else {
+                                cell.classList.remove('bg-red-500');
+                                cell.classList.add('bg-gray-200');
+                            }
+                        }
+                    }
+                }
+                // 그리드 변경 후 16진수 합계 업데이트
+                updateHexSums();
+            }
+
+            // 3-4. AI 이미지 생성 버튼 클릭 이벤트 (새로 추가)
+            aiImageButton.addEventListener('click', async () => {
+                const keyword = keywordInput.value.trim();
+                
+                if (!keyword) {
+                    aiStatusMessage.textContent = '키워드를 입력해주세요.';
+                    aiStatusMessage.classList.add('text-red-600');
+                    return;
+                }
+
+                // 로딩 상태 시작
+                aiImageButton.disabled = true;
+                keywordInput.disabled = true;
+                aiStatusMessage.textContent = 'AI 패턴 생성 중...';
+                aiStatusMessage.classList.add('text-blue-600');
+                aiStatusMessage.classList.remove('text-red-600');
+
+                try {
+                    const pattern = await generateAIPattern(keyword);
+                    applyPatternToGrid(pattern);
+                    aiStatusMessage.textContent = `"${keyword}" 패턴 생성 완료!`;
+                    aiStatusMessage.classList.remove('text-blue-600', 'text-red-600');
+
+                } catch (error) {
+                    // generateAIPattern 함수에서 API 키가 없을 때 이미 메시지를 설정했을 수 있습니다.
+                    if (!aiStatusMessage.textContent.includes('API 키')) {
+                        aiStatusMessage.textContent = '패턴 생성에 실패했습니다.';
+                        aiStatusMessage.classList.add('text-red-600');
+                    }
+                    aiStatusMessage.classList.remove('text-blue-600');
+                } finally {
+                    // 로딩 상태 종료
+                    aiImageButton.disabled = false;
+                    keywordInput.disabled = false;
+                }
+            });
+
+
+            // --- 6. 초기화 ---
+            // 페이지 로드 시 합계 디스플레이 초기화
+            updateHexSums();
+        });
+    </script>
+</body>
+</html>
