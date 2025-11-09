@@ -70,7 +70,6 @@
             <!-- ID를 부여하여 JS가 제어하도록 변경 -->
             <div id="main-grid" class="grid grid-cols-9 gap-1 items-center">
                 <!-- JavaScript로 Y축 라벨, 8x8 그리드, X축 라벨이 동적 생성됩니다. -->
-                <!-- (기존 X축 라벨 HTML은 JS로 이동) -->
             </div>
         </div>
 
@@ -92,19 +91,12 @@
         </div>
 
 
-        <!-- AI 이미지 생성 (키워드 입력 + 버튼) -->
-        <div class="mt-8 flex items-center space-x-2">
-            <input type="text" id="keyword-input" placeholder="키워드 입력 (예: heart)" class="flex-1 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
-            <button id="ai-image-button" class="bg-teal-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50">
-                ✨ AI 생성
-            </button>
-        </div>
-
-        <!-- AI 상태 메시지 -->
-        <div id="ai-status-message" class="text-center text-sm text-gray-600 mt-2 h-5"></div>
+        <!-- AI 이미지 생성 (키워드 입력 + 버튼) - (제거됨) -->
+        <!-- AI 상태 메시지 - (제거됨) -->
 
         <!-- 리셋 버튼 (제일 하단으로 이동 및 상단 마진 추가) -->
-        <button id="reset-button" class="mt-4 w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200">
+        <!-- AI 섹션이 빠졌으므로 mt-8로 상단 마진을 조정합니다. -->
+        <button id="reset-button" class="mt-8 w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200">
             🔄 처음부터 다시하기
         </button>
 
@@ -112,17 +104,13 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // const gridContainer = document.querySelector('.grid.grid-cols-9'); // (기존)
-            const gridContainer = document.getElementById('main-grid'); // (수정) ID로 선택
+            const gridContainer = document.getElementById('main-grid'); // ID로 선택
             const hexSumContainer = document.getElementById('hex-sum-container');
             const resetButton = document.getElementById('reset-button');
             const displayLineString = document.getElementById('display-line-string');
             const copyButton = document.getElementById('copy-button');
 
-            // AI 생성 관련 UI 요소
-            const aiImageButton = document.getElementById('ai-image-button');
-            const keywordInput = document.getElementById('keyword-input');
-            const aiStatusMessage = document.getElementById('ai-status-message');
+            // AI 생성 관련 UI 요소 (제거됨)
             
             // Y축 라벨 (행) - 상단(0x80)부터 하단(0x01) 순서로 변경
             const yLabels = ['0x80', '0x40', '0x20', '0x10', '0x08', '0x04', '0x02', '0x01'];
@@ -241,10 +229,7 @@
                 // 16진수 합계 업데이트 (0으로 리셋)
                 updateHexSums();
                 
-                // AI 입력 및 상태 초기화
-                keywordInput.value = '';
-                aiStatusMessage.textContent = '';
-                aiStatusMessage.classList.remove('text-red-600', 'text-blue-600');
+                // AI 입력 및 상태 초기화 (제거됨)
             });
 
             // 3-3. 복사 버튼 클릭 이벤트
@@ -291,180 +276,10 @@
             });
 
 
-            // --- Helper: API Exponential Backoff ---
-            // API 호출 시 재시도를 위한 헬퍼 함수
-            async function fetchWithBackoff(apiUrl, payload, maxRetries = 5) {
-                let delay = 1000; // 1초
-                for (let i = 0; i < maxRetries; i++) {
-                    try {
-                        const response = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-
-                        if (response.ok) {
-                            return await response.json();
-                        } else if (response.status === 429 || response.status >= 500) {
-                            // API 과부하 또는 서버 오류 시 잠시 대기 후 재시도
-                            // (콘솔 로그 없음)
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                            delay *= 2;
-                        } else {
-                            // 클라이언트 측 오류 (재시도 불필요)
-                            throw new Error(`API Error: ${response.statusText}`);
-                        }
-                    } catch (error) {
-                        // 네트워크 오류 시 재시도
-                        if (i < maxRetries - 1) {
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                            delay *= 2;
-                        } else {
-                            // 최대 재시도 횟수 도달
-                            throw error;
-                        }
-                    }
-                }
-                throw new Error('API request failed after maximum retries.');
-            }
-
-            // --- 4. AI 패턴 생성 함수 ---
-            async function generateAIPattern(keyword) {
-                
-                // ===================================================================
-                // !! 중요 !!
-                // 1단계에서 발급받은 본인의 API 키를 이곳에 붙여넣으세요.
-                // mayo : AI Studio API
-                // 키 조심
-                // ===================================================================
-                const apiKey = "AIzaSyAaBAyxJJGaEK9uejJ2Ul341ZuT65Dkurs"; 
-                
-                // API 키가 비어있는지 확인
-                if (!apiKey || apiKey.trim() === "" || apiKey.includes("AIzaSyAaBAyxJJGaEK9uejJ2Ul341ZuT65Dkurs")) {
-                    console.error("API 키가 설정되지 않았습니다.");
-                    aiStatusMessage.textContent = 'API 키가 필요합니다. 코드를 수정해주세요.';
-                    aiStatusMessage.classList.add('text-red-600');
-                    throw new Error("API Key is not set.");
-                }
-
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-                const systemPrompt = "You are an AI assistant for an 8x8 LED matrix display. Your task is to generate a simple, recognizable 8x8 bitmap pattern that represents a given keyword. You must respond *only* with a JSON object containing a single key 'pattern', which is an array of 8 integers. Each integer represents a row (from top to bottom), and its 8-bit binary representation defines which LEDs are on (1) or off (0). For example, the number 60 (binary 00111100) means the middle four LEDs are on. The array must have exactly 8 numbers, one for each row.";
-                
-                const userQuery = `Generate a pattern for the keyword: "${keyword}"`;
-
-                const payload = {
-                    contents: [{ parts: [{ text: userQuery }] }],
-                    systemInstruction: {
-                        parts: [{ text: systemPrompt }]
-                    },
-                    generationConfig: {
-                        responseMimeType: "application/json",
-                        responseSchema: {
-                            type: "OBJECT",
-                            properties: {
-                                "pattern": {
-                                    type: "ARRAY",
-                                    items: { type: "NUMBER" },
-                                    minItems: 8, // 8x8 그리드
-                                    maxItems: 8  // 8x8 그리드
-                                }
-                            },
-                            required: ["pattern"]
-                        }
-                    }
-                };
-
-                try {
-                    const result = await fetchWithBackoff(apiUrl, payload);
-                    const candidate = result.candidates?.[0];
-                    
-                    if (candidate && candidate.content?.parts?.[0]?.text) {
-                        const jsonText = candidate.content.parts[0].text;
-                        const parsedJson = JSON.parse(jsonText);
-                        
-                        if (parsedJson.pattern && Array.isArray(parsedJson.pattern) && parsedJson.pattern.length === 8) {
-                            // 8개의 숫자로 이루어진 배열인지 확인
-                            return parsedJson.pattern.map(num => Number(num) || 0); // 숫자로 변환
-                        }
-                    }
-                    // 스키마와 다르거나 유효하지 않은 응답
-                    throw new Error('Invalid pattern data received from AI.');
-
-                } catch (error) {
-                    console.error('Error generating AI pattern:', error);
-                    throw error; // 에러를 상위로 전파
-                }
-            }
-
-            // --- 5. UI 업데이트 함수 ---
-            function applyPatternToGrid(pattern) {
-                for (let rowIdx = 0; rowIdx < yLabels.length; rowIdx++) {
-                    const rowLabel = yLabels[rowIdx]; // '0x80', '0x40', ...
-                    const rowValue = pattern[rowIdx]; // AI가 생성한 숫자 (예: 60)
-
-                    for (let colIdx = 0; colIdx < xLabels.length; colIdx++) {
-                        const colLabel = xLabels[colIdx]; // '1', '2', ...
-                        
-                        // 비트 연산:
-                        // colIdx 0 (1열) -> 7번째 비트 (1 << 7)
-                        // colIdx 7 (8열) -> 0번째 비트 (1 << 0)
-                        const bitMask = 1 << (7 - colIdx);
-                        const isBitSet = (rowValue & bitMask) !== 0;
-
-                        const cell = document.querySelector(`.grid-cell[data-col="${colLabel}"][data-row="${rowLabel}"]`);
-
-                        if (cell) {
-                            if (isBitSet) {
-                                cell.classList.add('bg-red-500');
-                                cell.classList.remove('bg-gray-200');
-                            } else {
-                                cell.classList.remove('bg-red-500');
-                                cell.classList.add('bg-gray-200');
-                            }
-                        }
-                    }
-                }
-                // 그리드 변경 후 16진수 합계 업데이트
-                updateHexSums();
-            }
-
-            // 3-4. AI 이미지 생성 버튼 클릭 이벤트 (새로 추가)
-            aiImageButton.addEventListener('click', async () => {
-                const keyword = keywordInput.value.trim();
-                
-                if (!keyword) {
-                    aiStatusMessage.textContent = '키워드를 입력해주세요.';
-                    aiStatusMessage.classList.add('text-red-600');
-                    return;
-                }
-
-                // 로딩 상태 시작
-                aiImageButton.disabled = true;
-                keywordInput.disabled = true;
-                aiStatusMessage.textContent = 'AI 패턴 생성 중...';
-                aiStatusMessage.classList.add('text-blue-600');
-                aiStatusMessage.classList.remove('text-red-600');
-
-                try {
-                    const pattern = await generateAIPattern(keyword);
-                    applyPatternToGrid(pattern);
-                    aiStatusMessage.textContent = `"${keyword}" 패턴 생성 완료!`;
-                    aiStatusMessage.classList.remove('text-blue-600', 'text-red-600');
-
-                } catch (error) {
-                    // generateAIPattern 함수에서 API 키가 없을 때 이미 메시지를 설정했을 수 있습니다.
-                    if (!aiStatusMessage.textContent.includes('API 키')) {
-                        aiStatusMessage.textContent = '패턴 생성에 실패했습니다.';
-                        aiStatusMessage.classList.add('text-red-600');
-                    }
-                    aiStatusMessage.classList.remove('text-blue-600');
-                } finally {
-                    // 로딩 상태 종료
-                    aiImageButton.disabled = false;
-                    keywordInput.disabled = false;
-                }
-            });
+            // --- Helper: API Exponential Backoff --- (제거됨)
+            // --- 4. AI 패턴 생성 함수 --- (제거됨)
+            // --- 5. UI 업데이트 함수 --- (제거됨)
+            // 3-4. AI 이미지 생성 버튼 클릭 이벤트 (제거됨)
 
 
             // --- 6. 초기화 ---
